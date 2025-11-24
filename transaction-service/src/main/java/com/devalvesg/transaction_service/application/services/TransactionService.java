@@ -17,11 +17,6 @@ public class TransactionService implements ITransactionService {
     }
 
     @Override
-    public List<TransactionEntity> findAllByUserId(Long userId) {
-        return transactionRepository.findAllByUserId(userId);
-    }
-
-    @Override
     public TransactionEntity findById(Long id) {
         return transactionRepository.findById(id).orElseThrow(() -> new RuntimeException("Transaction not found"));
     }

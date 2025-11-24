@@ -5,7 +5,6 @@ import com.devalvesg.transaction_service.domain.models.entities.TransactionEntit
 import java.util.List;
 
 public interface ITransactionService {
-    public List<TransactionEntity> findAllByUserId(Long userId);
     public TransactionEntity findById(Long userId);
     public List<TransactionEntity> findAll();
     public TransactionEntity CreateTransaction(TransactionEntity transactionEntity);
