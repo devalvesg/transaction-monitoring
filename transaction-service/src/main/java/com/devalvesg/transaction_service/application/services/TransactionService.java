@@ -7,6 +7,7 @@ import com.devalvesg.transaction_service.domain.models.entities.TransactionEntit
 import com.devalvesg.transaction_service.domain.models.enums.PaymentNetwork;
 import com.devalvesg.transaction_service.domain.models.enums.TransactionStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -33,6 +34,7 @@ public class TransactionService implements ITransactionService {
         return transactionRepository.findAll();
     }
 
+    @Override
     public TransactionEntity findByTransactionId(String transactionId) {
         if (transactionId == null || transactionId.trim().isEmpty()) {
             throw new CustomException("Invalid transaction identifier");
@@ -41,6 +43,7 @@ public class TransactionService implements ITransactionService {
                 .orElseThrow(() -> new CustomException("Transaction not found"));
     }
 
+    @Override
     public List<TransactionEntity> findByFromAddress(String address) {
         if (address == null || address.trim().isEmpty()) {
             throw new CustomException("Invalid address");
@@ -48,6 +51,7 @@ public class TransactionService implements ITransactionService {
         return transactionRepository.findAllByFromAddress(address);
     }
 
+    @Override
     public List<TransactionEntity> findByToAddress(String address) {
         if (address == null || address.trim().isEmpty()) {
             throw new CustomException("Invalid address");
@@ -55,6 +59,7 @@ public class TransactionService implements ITransactionService {
         return transactionRepository.findAllByToAddress(address);
     }
 
+    @Override
     public List<TransactionEntity> findByStatus(TransactionStatus status) {
         if (status == null) {
             throw new CustomException("Invalid status");
@@ -62,6 +67,7 @@ public class TransactionService implements ITransactionService {
         return transactionRepository.findAllByStatus(status);
     }
 
+    @Override
     public List<TransactionEntity> findByNetwork(PaymentNetwork network) {
         if (network == null) {
             throw new CustomException("Invalid payment network");
@@ -69,34 +75,32 @@ public class TransactionService implements ITransactionService {
         return transactionRepository.findAllByNetwork(network);
     }
 
+    @Override
     public List<TransactionEntity> findFlaggedAsFraud() {
         return transactionRepository.findAllFlaggedAsFraud();
     }
 
     @Override
+    @Transactional
     public TransactionEntity createTransaction(TransactionEntity transactionEntity) {
         if (transactionEntity.getFromAddress().equals(transactionEntity.getToAddress())) {
             throw new CustomException("From address and to address cannot be the same");
         }
 
-        transactionEntity.setFlaggedAsFraud(null);
-        transactionEntity.setRiskScore(null);
-
-            transactionEntity.setStatus(TransactionStatus.PENDING);
+        transactionEntity.setStatus(TransactionStatus.PENDING);
 
         return transactionRepository.save(transactionEntity);
     }
 
     @Override
+    @Transactional
     public TransactionEntity updateTransaction(TransactionEntity transactionEntity) {
         if (transactionEntity == null || transactionEntity.getId() == null) {
             throw new CustomException("Transaction identifier is required");
         }
 
-        // Verificar se transação existe
         TransactionEntity existingTransaction = findById(transactionEntity.getId());
 
-        // Permitir atualização de campos específicos
         if (transactionEntity.getStatus() != null) {
             existingTransaction.setStatus(transactionEntity.getStatus());
         }
@@ -114,17 +118,5 @@ public class TransactionService implements ITransactionService {
         }
 
         return transactionRepository.save(existingTransaction);
-    }
-
-    public void deleteTransaction(Long id) {
-        if (id == null || id <= 0) {
-            throw new CustomException("Invalid identifier");
-        }
-
-        if (!transactionRepository.existsById(id)) {
-            throw new CustomException("Transaction not found");
-        }
-
-        transactionRepository.deleteById(id);
     }
 }

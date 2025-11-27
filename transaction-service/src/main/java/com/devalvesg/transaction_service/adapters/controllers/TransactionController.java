@@ -55,12 +55,6 @@ public class TransactionController {
         return ResponseEntity.ok(transactionMapper.toResponse(updatedEntity));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTransaction(@PathVariable Long id) {
-        transactionService.deleteTransaction(id);
-        return ResponseEntity.noContent().build();
-    }
-
     @GetMapping("/search/by-transaction-id/{transactionId}")
     public ResponseEntity<TransactionResponse> getByTransactionId(@PathVariable String transactionId) {
         TransactionEntity entity = transactionService.findByTransactionId(transactionId);
