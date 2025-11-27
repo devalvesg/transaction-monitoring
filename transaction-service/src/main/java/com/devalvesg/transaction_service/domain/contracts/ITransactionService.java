@@ -7,6 +7,6 @@ import java.util.List;
 public interface ITransactionService {
     public TransactionEntity findById(Long userId);
     public List<TransactionEntity> findAll();
-    public TransactionEntity CreateTransaction(TransactionEntity transactionEntity);
-    public TransactionEntity UpdateTransaction(TransactionEntity transactionEntity);
+    public TransactionEntity createTransaction(TransactionEntity transactionEntity);
+    public TransactionEntity updateTransaction(TransactionEntity transactionEntity);
 }
