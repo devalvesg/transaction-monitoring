@@ -69,17 +69,16 @@ public class TransactionEntity {
     @Column(length = 50)
     private TransactionType type;
 
-    @Column(nullable = false)
-    @Builder.Default
-    private Boolean flaggedAsFraud = false;
+    @Column(nullable = true)
+    private Boolean flaggedAsFraud;
 
-    @Column(precision = 5, scale = 2)
+    @Column(precision = 5, scale = 2, nullable = true)
     private BigDecimal riskScore;
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Instant updatedAt;
 
     @PrePersist
