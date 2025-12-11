@@ -1,23 +1,36 @@
 package com.devalvesg.transaction_service.application.services;
 
+import com.devalvesg.transaction_service.adapters.dto.TransactionEvent;
+import com.devalvesg.transaction_service.adapters.mappers.TransactionMapper;
+import com.devalvesg.transaction_service.adapters.messaging.TransactionEventProducer;
 import com.devalvesg.transaction_service.adapters.persistence.TransactionRepository;
 import com.devalvesg.transaction_service.domain.contracts.ITransactionService;
 import com.devalvesg.transaction_service.domain.exceptions.CustomException;
 import com.devalvesg.transaction_service.domain.models.entities.TransactionEntity;
 import com.devalvesg.transaction_service.domain.models.enums.PaymentNetwork;
 import com.devalvesg.transaction_service.domain.models.enums.TransactionStatus;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 
+@Slf4j
 @Service
 public class TransactionService implements ITransactionService {
 
     private final TransactionRepository transactionRepository;
+    private final TransactionEventProducer eventProducer;
+    private final TransactionMapper transactionMapper;
 
-    public TransactionService(TransactionRepository repository) {
+    public TransactionService(
+            TransactionRepository repository,
+            TransactionEventProducer eventProducer,
+            TransactionMapper transactionMapper) {
         this.transactionRepository = repository;
+        this.eventProducer = eventProducer;
+        this.transactionMapper = transactionMapper;
     }
 
     @Override
@@ -89,7 +102,19 @@ public class TransactionService implements ITransactionService {
 
         transactionEntity.setStatus(TransactionStatus.PENDING);
 
-        return transactionRepository.save(transactionEntity);
+        TransactionEntity savedTransaction = transactionRepository.save(transactionEntity);
+
+        try {
+            TransactionEvent event = transactionMapper.toEvent(savedTransaction);
+            event.setEventType("TRANSACTION_CREATED");
+            event.setEventTimestamp(Instant.now());
+            eventProducer.sendTransactionCreatedEvent(event);
+        } catch (Exception e) {
+            log.error("Failed to publish transaction created event for transactionId: {}",
+                     savedTransaction.getTransactionId(), e);
+        }
+
+        return savedTransaction;
     }
 
     @Override
@@ -117,6 +142,18 @@ public class TransactionService implements ITransactionService {
             existingTransaction.setToLabel(transactionEntity.getToLabel());
         }
 
-        return transactionRepository.save(existingTransaction);
+        TransactionEntity updatedTransaction = transactionRepository.save(existingTransaction);
+
+        try {
+            TransactionEvent event = transactionMapper.toEvent(updatedTransaction);
+            event.setEventType("TRANSACTION_UPDATED");
+            event.setEventTimestamp(Instant.now());
+            eventProducer.sendTransactionUpdatedEvent(event);
+        } catch (Exception e) {
+            log.error("Failed to publish transaction updated event for transactionId: {}",
+                     updatedTransaction.getTransactionId(), e);
+        }
+
+        return updatedTransaction;
     }
 }

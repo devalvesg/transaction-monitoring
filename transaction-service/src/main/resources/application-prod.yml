@@ -12,6 +12,14 @@ spring:
 
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.type.mapping: transactionEvent:com.devalvesg.transaction_service.adapters.dto.TransactionEvent
+    topics:
+      transactions-created: transactions-created
+      transactions-updated: transactions-updated
 
 logging:
   level:

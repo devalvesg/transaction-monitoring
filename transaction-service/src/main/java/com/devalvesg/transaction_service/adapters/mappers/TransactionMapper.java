@@ -1,5 +1,6 @@
 package com.devalvesg.transaction_service.adapters.mappers;
 
+import com.devalvesg.transaction_service.adapters.dto.TransactionEvent;
 import com.devalvesg.transaction_service.adapters.dto.TransactionRequest;
 import com.devalvesg.transaction_service.adapters.dto.TransactionResponse;
 import com.devalvesg.transaction_service.domain.models.entities.TransactionEntity;
@@ -13,6 +14,10 @@ public interface TransactionMapper {
     TransactionEntity toEntity(TransactionRequest request);
 
     TransactionResponse toResponse(TransactionEntity entity);
+
+    @Mapping(target = "eventType", ignore = true)
+    @Mapping(target = "eventTimestamp", ignore = true)
+    TransactionEvent toEvent(TransactionEntity entity);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)

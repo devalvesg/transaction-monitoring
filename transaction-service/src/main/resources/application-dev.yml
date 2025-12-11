@@ -7,11 +7,19 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
 
   kafka:
     bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.type.mapping: transactionEvent:com.devalvesg.transaction_service.adapters.dto.TransactionEvent
+    topics:
+      transactions-created: transactions-created
+      transactions-updated: transactions-updated
 
 logging:
   level:
