@@ -12,9 +12,22 @@ spring:
 
   kafka:
     bootstrap-servers: localhost:9092
+    consumer:
+      group-id: fraud-analysis-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.type.mapping: transactionEvent:com.devalvesg.fraud_analysis_service.adapters.dto.TransactionEvent
+    topics:
+      transactions-created: transactions-created
+      transactions-updated: transactions-updated
+      fraud-alerts: fraud-alerts
+      dead-letter-queue: fraud-analysis-dlq
 
 logging:
   level:
     root: INFO
-    com.example.fraud: DEBUG
+    com.devalvesg.fraud_analysis_service: DEBUG
     org.springframework.kafka: DEBUG
