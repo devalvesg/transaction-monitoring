@@ -78,8 +78,10 @@ services:
       SPRING_DATASOURCE_PASSWORD: transaction_pass
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JAVA_TOOL_OPTIONS: -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
     ports:
       - "8080:8080"
+      - "5005:5005"
     restart: always
 
   # Serviço de análise de fraudes
@@ -98,8 +100,10 @@ services:
       SPRING_DATASOURCE_PASSWORD: fraud_pass
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JAVA_TOOL_OPTIONS: -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5006
     ports:
       - "8081:8081"
+      - "5006:5006"
     restart: always
 
 # Volumes persistentes dos bancos

@@ -12,8 +12,39 @@ spring:
 
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+    consumer:
+      group-id: fraud-analysis-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.type.mapping: transactionEvent:com.devalvesg.fraud_analysis_service.adapters.dto.TransactionEvent
+    topics:
+      transactions-created: transactions-created
+      transactions-updated: transactions-updated
+      fraud-alerts: fraud-alerts
+      dead-letter-queue: fraud-analysis-dlq
+
+fraud-detection:
+  high-value-threshold: 10000
+  night-hour-start: 0
+  night-hour-end: 5
+  new-address-transaction-threshold: 5
+  pending-timeout-hours: 24
+  fraud-score-threshold: 70
+  rule-weights:
+    HIGH_VALUE_AT_NIGHT: 40
+    NEW_ADDRESS_HIGH_VALUE: 35
+    FIRST_TIME_TRANSACTION: 15
+    SUSPICIOUS_LABELS: 60
+    RANDOM_OR_MEANINGLESS_LABEL: 25
+    ADDRESS_IN_BLACKLIST: 100
+    PENDING_TOO_LONG: 20
+    SAME_FROM_AND_TO_ADDRESS: 50
 
 logging:
   level:
     root: WARN
-    com.example.fraud: INFO
+    com.devalvesg.fraud_analysis_service: INFO
+    org.springframework.kafka: INFO

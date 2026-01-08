@@ -4,6 +4,7 @@ import com.devalvesg.transaction_service.domain.models.entities.TransactionEntit
 import com.devalvesg.transaction_service.domain.models.enums.PaymentNetwork;
 import com.devalvesg.transaction_service.domain.models.enums.TransactionStatus;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public interface ITransactionService {
@@ -18,5 +19,6 @@ public interface ITransactionService {
 
     TransactionEntity createTransaction(TransactionEntity entity);
     TransactionEntity updateTransaction(TransactionEntity entity);
+    TransactionEntity updateTransactionFraudDetails(Long transactionId, Boolean flaggedAsFraud, BigDecimal riskScore);
 
 }

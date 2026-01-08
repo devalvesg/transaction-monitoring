@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
@@ -155,5 +156,20 @@ public class TransactionService implements ITransactionService {
         }
 
         return updatedTransaction;
+    }
+
+    @Override
+    @Transactional
+    public TransactionEntity updateTransactionFraudDetails(Long transactionId, Boolean flaggedAsFraud, BigDecimal riskScore) {
+        if (transactionId == null || transactionId <= 0) {
+            throw new CustomException("Invalid transaction identifier");
+        }
+
+        TransactionEntity existingTransaction = findById(transactionId);
+
+        existingTransaction.setFlaggedAsFraud(flaggedAsFraud);
+        existingTransaction.setRiskScore(riskScore);
+
+        return updateTransaction(existingTransaction);
     }
 }

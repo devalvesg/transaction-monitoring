@@ -31,3 +31,20 @@ logging:
     root: INFO
     com.devalvesg.fraud_analysis_service: DEBUG
     org.springframework.kafka: DEBUG
+
+fraud-detection:
+  high-value-threshold: 10000
+  night-hour-start: 0
+  night-hour-end: 5
+  new-address-transaction-threshold: 5
+  pending-timeout-hours: 24
+  fraud-score-threshold: 70
+  rule-weights:
+    HIGH_VALUE_AT_NIGHT: 40
+    NEW_ADDRESS_HIGH_VALUE: 35
+    FIRST_TIME_TRANSACTION: 15
+    SUSPICIOUS_LABELS: 60
+    RANDOM_OR_MEANINGLESS_LABEL: 25
+    ADDRESS_IN_BLACKLIST: 100
+    PENDING_TOO_LONG: 20
+    SAME_FROM_AND_TO_ADDRESS: 50
