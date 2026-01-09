@@ -1,9 +1,11 @@
 package com.devalvesg.fraud_analysis_service.application.services;
 
 import com.devalvesg.fraud_analysis_service.adapters.dto.TransactionEvent;
+import com.devalvesg.fraud_analysis_service.adapters.persistence.BlacklistedAddressRepository;
 import com.devalvesg.fraud_analysis_service.adapters.persistence.TransactionRepository;
 import com.devalvesg.fraud_analysis_service.application.config.FraudDetectionProperties;
 import com.devalvesg.fraud_analysis_service.application.dto.FraudAnalysisResult;
+import com.devalvesg.fraud_analysis_service.domain.models.entities.BlacklistedAddress;
 import com.devalvesg.fraud_analysis_service.domain.models.entities.TransactionEntity;
 import com.devalvesg.fraud_analysis_service.domain.models.enums.FraudRule;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import java.util.*;
 public class FraudAnalysisService {
 
     private final TransactionRepository transactionRepository;
+    private final BlacklistedAddressRepository blackListRepository;
     private final FraudRuleEngine ruleEngine;
     private final FraudDetectionProperties properties;
 
@@ -42,6 +45,14 @@ public class FraudAnalysisService {
 
         Map<FraudRule, String> violations = new HashMap<>();
         evaluateAllRules(event, txCount, violations);
+
+        if(violations.keySet().stream().mapToInt(FraudRule::getDefaultWeight).sum() > 100){
+            blackListRepository.save(BlacklistedAddress.builder()
+                            .addedAt(Instant.now())
+                            .address(transaction.getFromAddress())
+                            .reason("The minimum score limit has been exceeded")
+                    .build());
+        }
 
         BigDecimal riskScore = calculateRiskScore(violations.keySet());
 
@@ -120,10 +131,6 @@ public class FraudAnalysisService {
         // Rule 12: PENDING_TOO_LONG
         ruleEngine.checkPendingTooLong(event).ifPresent(reason ->
                 violations.put(FraudRule.PENDING_TOO_LONG, reason));
-
-        // Rule 13: SAME_FROM_AND_TO_ADDRESS
-        ruleEngine.checkSameFromAndToAddress(event).ifPresent(reason ->
-                violations.put(FraudRule.SAME_FROM_AND_TO_ADDRESS, reason));
 
         log.debug("Rule evaluation complete: {} violations detected", violations.size());
     }

@@ -142,15 +142,6 @@ public class FraudRuleEngine {
         return Optional.empty();
     }
 
-    public Optional<String> checkSameFromAndToAddress(TransactionEvent event) {
-        if (event.getFromAddress().equalsIgnoreCase(event.getToAddress())) {
-            return Optional.of(String.format(
-                    "Sender and recipient are identical: %s", event.getFromAddress()
-            ));
-        }
-        return Optional.empty();
-    }
-
     private boolean containsSuspiciousKeyword(String label) {
         String lowerLabel = label.toLowerCase();
         return SUSPICIOUS_KEYWORDS.stream().anyMatch(lowerLabel::contains);
