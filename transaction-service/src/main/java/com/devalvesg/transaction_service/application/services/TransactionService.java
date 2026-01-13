@@ -6,7 +6,9 @@ import com.devalvesg.transaction_service.adapters.messaging.TransactionEventProd
 import com.devalvesg.transaction_service.adapters.persistence.TransactionRepository;
 import com.devalvesg.transaction_service.domain.contracts.ITransactionService;
 import com.devalvesg.transaction_service.domain.exceptions.CustomException;
+import com.devalvesg.transaction_service.domain.models.entities.FraudRuleViolationEntity;
 import com.devalvesg.transaction_service.domain.models.entities.TransactionEntity;
+import com.devalvesg.transaction_service.domain.models.enums.FraudRule;
 import com.devalvesg.transaction_service.domain.models.enums.PaymentNetwork;
 import com.devalvesg.transaction_service.domain.models.enums.TransactionStatus;
 import lombok.extern.slf4j.Slf4j;
@@ -160,7 +162,13 @@ public class TransactionService implements ITransactionService {
 
     @Override
     @Transactional
-    public TransactionEntity updateTransactionFraudDetails(Long transactionId, Boolean flaggedAsFraud, BigDecimal riskScore) {
+    public TransactionEntity updateTransactionFraudDetails(
+            Long transactionId,
+            Boolean flaggedAsFraud,
+            BigDecimal riskScore,
+            List<String> triggeredRuleNames,
+            Instant detectedAt) {
+
         if (transactionId == null || transactionId <= 0) {
             throw new CustomException("Invalid transaction identifier");
         }
@@ -169,6 +177,32 @@ public class TransactionService implements ITransactionService {
 
         existingTransaction.setFlaggedAsFraud(flaggedAsFraud);
         existingTransaction.setRiskScore(riskScore);
+
+        existingTransaction.clearViolations();
+
+        if (triggeredRuleNames != null && !triggeredRuleNames.isEmpty()) {
+            for (String ruleName : triggeredRuleNames) {
+                FraudRule rule = FraudRule.fromName(ruleName);
+
+                if (rule == null) {
+                    log.warn("Unknown fraud rule name received: {}. Skipping.", ruleName);
+                    continue;
+                }
+
+                FraudRuleViolationEntity violation = FraudRuleViolationEntity.builder()
+                        .ruleName(rule)
+                        .ruleDescription(rule.getDescription())
+                        .detailMessage(null) // Can be enhanced with parsing if needed
+                        .detectedAt(detectedAt != null ? detectedAt : Instant.now())
+                        .build();
+
+                existingTransaction.addViolation(violation);
+            }
+
+            log.info("Added {} fraud rule violations to transaction {}",
+                    existingTransaction.getFraudViolations().size(),
+                    transactionId);
+        }
 
         return updateTransaction(existingTransaction);
     }

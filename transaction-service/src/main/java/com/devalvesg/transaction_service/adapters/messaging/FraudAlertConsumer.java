@@ -51,13 +51,16 @@ public class FraudAlertConsumer {
             transactionService.updateTransactionFraudDetails(
                     fraudAlert.getTransactionId(),
                     fraudAlert.getFlaggedAsFraud(),
-                    fraudAlert.getRiskScore()
+                    fraudAlert.getRiskScore(),
+                    fraudAlert.getTriggeredRules(),
+                    fraudAlert.getEventTimestamp()
             );
 
-            log.info("Successfully processed fraud alert for transaction {} (fraud={}, score={})",
+            log.info("Successfully processed fraud alert for transaction {} (fraud={}, score={}, violations={})",
                     fraudAlert.getTransactionUuid(),
                     fraudAlert.getFlaggedAsFraud(),
-                    fraudAlert.getRiskScore());
+                    fraudAlert.getRiskScore(),
+                    fraudAlert.getTriggeredRules() != null ? fraudAlert.getTriggeredRules().size() : 0);
 
             acknowledgment.acknowledge();
 

@@ -8,6 +8,8 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "transactions", indexes = {
@@ -81,6 +83,15 @@ public class TransactionEntity {
     @Column(nullable = true)
     private Instant updatedAt;
 
+    @OneToMany(
+        mappedBy = "transaction",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true,
+        fetch = FetchType.LAZY
+    )
+    @Builder.Default
+    private List<FraudRuleViolationEntity> fraudViolations = new ArrayList<>();
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
@@ -89,5 +100,15 @@ public class TransactionEntity {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = Instant.now();
+    }
+
+    public void addViolation(FraudRuleViolationEntity violation) {
+        fraudViolations.add(violation);
+        violation.setTransaction(this);
+    }
+
+    public void clearViolations() {
+        fraudViolations.forEach(v -> v.setTransaction(null));
+        fraudViolations.clear();
     }
 }

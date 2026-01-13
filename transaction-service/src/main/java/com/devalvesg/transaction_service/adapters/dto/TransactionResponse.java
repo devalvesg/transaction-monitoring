@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 @Data
 @Builder
@@ -32,6 +33,7 @@ public class TransactionResponse {
     private TransactionType type;
     private Boolean flaggedAsFraud;
     private BigDecimal riskScore;
+    private List<FraudRuleViolationResponse> fraudViolations;
     private Instant createdAt;
     private Instant updatedAt;
 }
