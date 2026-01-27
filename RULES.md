@@ -109,13 +109,6 @@ usados:** `fromAddress`, `realizedAt`
 
 ------------------------------------------------------------------------
 
-## 13. SAME_FROM_AND_TO_ADDRESS
-
--   **Descrição:** Detecta transações onde origem e destino são iguais.
--   **Campos usados:** `fromAddress`, `toAddress`
-
-------------------------------------------------------------------------
-
 ### Nota Final
 
 Regras dependentes de histórico só devem ser aplicadas quando a carteira
