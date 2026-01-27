@@ -1,8 +1,8 @@
-package com.devalvesg.transaction_service.adapters.dto;
+package com.devalvesg.fraud_analysis_service.adapters.dto;
 
-import com.devalvesg.transaction_service.domain.models.enums.PaymentNetwork;
-import com.devalvesg.transaction_service.domain.models.enums.TransactionStatus;
-import com.devalvesg.transaction_service.domain.models.enums.TransactionType;
+import com.devalvesg.fraud_analysis_service.domain.models.enums.PaymentNetwork;
+import com.devalvesg.fraud_analysis_service.domain.models.enums.TransactionStatus;
+import com.devalvesg.fraud_analysis_service.domain.models.enums.TransactionType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,13 +10,15 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.List;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TransactionResponse {
+public class TransactionEvent {
+
+    private String eventType;
+    private Instant eventTimestamp;
 
     private Long id;
     private String transactionId;
@@ -33,7 +35,6 @@ public class TransactionResponse {
     private TransactionType type;
     private Boolean flaggedAsFraud;
     private BigDecimal riskScore;
-    private List<FraudRuleViolationResponse> fraudViolations;
     private Instant createdAt;
     private Instant updatedAt;
 }

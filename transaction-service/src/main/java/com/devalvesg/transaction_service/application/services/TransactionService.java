@@ -6,15 +6,23 @@ import com.devalvesg.transaction_service.adapters.messaging.TransactionEventProd
 import com.devalvesg.transaction_service.adapters.persistence.TransactionRepository;
 import com.devalvesg.transaction_service.domain.contracts.ITransactionService;
 import com.devalvesg.transaction_service.domain.exceptions.CustomException;
+import com.devalvesg.transaction_service.domain.models.entities.FraudRuleViolationEntity;
 import com.devalvesg.transaction_service.domain.models.entities.TransactionEntity;
+import com.devalvesg.transaction_service.domain.models.enums.FraudRule;
 import com.devalvesg.transaction_service.domain.models.enums.PaymentNetwork;
 import com.devalvesg.transaction_service.domain.models.enums.TransactionStatus;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Service
@@ -23,14 +31,38 @@ public class TransactionService implements ITransactionService {
     private final TransactionRepository transactionRepository;
     private final TransactionEventProducer eventProducer;
     private final TransactionMapper transactionMapper;
+    private final Counter transactionCreatedCounter;
+    private final Timer transactionCreationTimer;
+    private final Counter fraudAlertReceivedCounter;
+    private final Counter fraudDetectedCounter;
+    private final DistributionSummary transactionAmountSummary;
+    private final DistributionSummary riskScoreSummary;
+    private final AtomicInteger pendingTransactionCount;
+    private final MeterRegistry meterRegistry;
 
     public TransactionService(
             TransactionRepository repository,
             TransactionEventProducer eventProducer,
-            TransactionMapper transactionMapper) {
+            TransactionMapper transactionMapper,
+            Counter transactionCreatedCounter,
+            Timer transactionCreationTimer,
+            Counter fraudAlertReceivedCounter,
+            Counter fraudDetectedCounter,
+            DistributionSummary transactionAmountSummary,
+            DistributionSummary riskScoreSummary,
+            AtomicInteger pendingTransactionCount,
+            MeterRegistry meterRegistry) {
         this.transactionRepository = repository;
         this.eventProducer = eventProducer;
         this.transactionMapper = transactionMapper;
+        this.transactionCreatedCounter = transactionCreatedCounter;
+        this.transactionCreationTimer = transactionCreationTimer;
+        this.fraudAlertReceivedCounter = fraudAlertReceivedCounter;
+        this.fraudDetectedCounter = fraudDetectedCounter;
+        this.transactionAmountSummary = transactionAmountSummary;
+        this.riskScoreSummary = riskScoreSummary;
+        this.pendingTransactionCount = pendingTransactionCount;
+        this.meterRegistry = meterRegistry;
     }
 
     @Override
@@ -96,25 +128,32 @@ public class TransactionService implements ITransactionService {
     @Override
     @Transactional
     public TransactionEntity createTransaction(TransactionEntity transactionEntity) {
-        if (transactionEntity.getFromAddress().equals(transactionEntity.getToAddress())) {
-            throw new CustomException("From address and to address cannot be the same");
-        }
+        return transactionCreationTimer.record(() -> {
+            if (transactionEntity.getFromAddress().equals(transactionEntity.getToAddress())) {
+                throw new CustomException("From address and to address cannot be the same");
+            }
 
-        transactionEntity.setStatus(TransactionStatus.PENDING);
+            transactionEntity.setStatus(TransactionStatus.PENDING);
+            TransactionEntity savedTransaction = transactionRepository.save(transactionEntity);
 
-        TransactionEntity savedTransaction = transactionRepository.save(transactionEntity);
+            transactionCreatedCounter.increment();
+            transactionAmountSummary.record(savedTransaction.getAmount().doubleValue());
+            meterRegistry.counter("transactions.created.by.network",
+                    "network", savedTransaction.getNetwork().name()).increment();
+            pendingTransactionCount.incrementAndGet();
 
-        try {
-            TransactionEvent event = transactionMapper.toEvent(savedTransaction);
-            event.setEventType("TRANSACTION_CREATED");
-            event.setEventTimestamp(Instant.now());
-            eventProducer.sendTransactionCreatedEvent(event);
-        } catch (Exception e) {
-            log.error("Failed to publish transaction created event for transactionId: {}",
-                     savedTransaction.getTransactionId(), e);
-        }
+            try {
+                TransactionEvent event = transactionMapper.toEvent(savedTransaction);
+                event.setEventType("TRANSACTION_CREATED");
+                event.setEventTimestamp(Instant.now());
+                eventProducer.sendTransactionCreatedEvent(event);
+            } catch (Exception e) {
+                log.error("Failed to publish transaction created event for transactionId: {}",
+                         savedTransaction.getTransactionId(), e);
+            }
 
-        return savedTransaction;
+            return savedTransaction;
+        });
     }
 
     @Override
@@ -155,5 +194,69 @@ public class TransactionService implements ITransactionService {
         }
 
         return updatedTransaction;
+    }
+
+    @Override
+    @Transactional
+    public TransactionEntity updateTransactionFraudDetails(
+            Long transactionId,
+            Boolean flaggedAsFraud,
+            BigDecimal riskScore,
+            List<String> triggeredRuleNames,
+            Instant detectedAt) {
+
+        fraudAlertReceivedCounter.increment();
+
+        if (transactionId == null || transactionId <= 0) {
+            throw new CustomException("Invalid transaction identifier");
+        }
+
+        TransactionEntity existingTransaction = findById(transactionId);
+
+        existingTransaction.setFlaggedAsFraud(flaggedAsFraud);
+        existingTransaction.setRiskScore(riskScore);
+
+        if (flaggedAsFraud != null && flaggedAsFraud) {
+            fraudDetectedCounter.increment();
+        }
+
+        if (riskScore != null) {
+            riskScoreSummary.record(riskScore.doubleValue());
+        }
+
+        if (existingTransaction.getStatus() == TransactionStatus.PENDING) {
+            pendingTransactionCount.decrementAndGet();
+        }
+
+        existingTransaction.clearViolations();
+
+        if (triggeredRuleNames != null && !triggeredRuleNames.isEmpty()) {
+            for (String ruleName : triggeredRuleNames) {
+                FraudRule rule = FraudRule.fromName(ruleName);
+
+                if (rule == null) {
+                    log.warn("Unknown fraud rule name received: {}. Skipping.", ruleName);
+                    continue;
+                }
+
+                meterRegistry.counter("fraud.rules.violated",
+                        "rule", ruleName).increment();
+
+                FraudRuleViolationEntity violation = FraudRuleViolationEntity.builder()
+                        .ruleName(rule)
+                        .ruleDescription(rule.getDescription())
+                        .detailMessage(null)
+                        .detectedAt(detectedAt != null ? detectedAt : Instant.now())
+                        .build();
+
+                existingTransaction.addViolation(violation);
+            }
+
+            log.info("Added {} fraud rule violations to transaction {}",
+                    existingTransaction.getFraudViolations().size(),
+                    transactionId);
+        }
+
+        return updateTransaction(existingTransaction);
     }
 }

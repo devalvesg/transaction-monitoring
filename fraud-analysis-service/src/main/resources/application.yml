@@ -2,7 +2,7 @@ spring:
   application:
     name: fraud-analysis-service
   profiles:
-    active: dev
+    active: ${ACTIVE_PROFILE}
 
   jpa:
     show-sql: true
@@ -11,25 +11,15 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
-#  kafka:
-#    consumer:
-#      group-id: fraud-analysis-group
-#      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-#      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-#      properties:
-#        spring.json.trusted.packages: "*"
-#        spring.json.type.mapping: transaction:com.example.fraud.model.Transaction
-#      auto-offset-reset: earliest
-
 server:
   port: 8081
 
-#management:
-#  endpoints:
-#    web:
-#      exposure:
-#        include: health,info,metrics,prometheus
-#  metrics:
-#    export:
-#      prometheus:
-#        enabled: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
